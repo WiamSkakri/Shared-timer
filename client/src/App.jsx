@@ -119,6 +119,14 @@ function App() {
     socket.emit('stopTimer');
   };
 
+  const handleReset = () => {
+    if (!timerId) {
+      showMessage('Please create or join a timer first', 'error');
+      return;
+    }
+    socket.emit('resetTimer');
+  };
+
   return (
     <div className="app">
       <div className="container">
@@ -152,7 +160,7 @@ function App() {
           </div>
         </div>
 
-        {isJoined && (
+        {timerId && (
           <div className="actions">
             <button
               onClick={handleStart}
@@ -163,10 +171,16 @@ function App() {
             </button>
             <button
               onClick={handleStop}
-              className="btn btn-danger"
+              className="btn btn-warning"
               disabled={!isRunning}
             >
-              Stop
+              Pause
+            </button>
+            <button
+              onClick={handleReset}
+              className="btn btn-danger"
+            >
+              Reset
             </button>
           </div>
         )}

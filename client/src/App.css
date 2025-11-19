@@ -163,6 +163,15 @@
   color: white;
 }
 
+.btn-warning {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #d97706;
+}
+
 .btn-danger {
   background-color: #ef4444;
   color: white;

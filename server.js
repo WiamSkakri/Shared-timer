@@ -17,9 +17,6 @@ const CLEANUP_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
 // Serve static files from React build in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'client/dist')));
-} else {
-  // In development, serve from public directory for backward compatibility
-  app.use(express.static('public'));
 }
 
 // Endpoint to create a new timer
