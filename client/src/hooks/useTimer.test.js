@@ -18,6 +18,8 @@ describe('useTimer', () => {
     expect(result.current.time).toBe(0);
     expect(result.current.isRunning).toBe(false);
     expect(result.current.isJoined).toBe(false);
+    expect(result.current.startTime).toBeNull();
+    expect(result.current.pausedTime).toBe(0);
   });
 
   it('should set timer ID', () => {
@@ -60,10 +62,13 @@ describe('useTimer', () => {
     expect(result.current.isJoined).toBe(true);
   });
 
-  it('should increment time when timer is running', () => {
+  it('should calculate time when timer is running based on timestamps', () => {
     const { result } = renderHook(() => useTimer());
+    const mockStartTime = Date.now();
 
     act(() => {
+      result.current.setStartTime(mockStartTime);
+      result.current.setPausedTime(0);
       result.current.setIsRunning(true);
     });
 
@@ -94,10 +99,13 @@ describe('useTimer', () => {
     expect(result.current.time).toBe(0);
   });
 
-  it('should stop incrementing when timer is stopped', () => {
+  it('should stop calculating time when timer is stopped', () => {
     const { result } = renderHook(() => useTimer());
+    const mockStartTime = Date.now();
 
     act(() => {
+      result.current.setStartTime(mockStartTime);
+      result.current.setPausedTime(0);
       result.current.setIsRunning(true);
     });
 
@@ -109,6 +117,8 @@ describe('useTimer', () => {
 
     act(() => {
       result.current.setIsRunning(false);
+      result.current.setPausedTime(3);
+      result.current.setStartTime(null);
     });
 
     act(() => {
@@ -126,12 +136,16 @@ describe('useTimer', () => {
       result.current.setTime(100);
       result.current.setIsRunning(true);
       result.current.setIsJoined(true);
+      result.current.setStartTime(Date.now());
+      result.current.setPausedTime(50);
     });
 
     expect(result.current.timerId).toBe('test-id');
     expect(result.current.time).toBe(100);
     expect(result.current.isRunning).toBe(true);
     expect(result.current.isJoined).toBe(true);
+    expect(result.current.startTime).not.toBeNull();
+    expect(result.current.pausedTime).toBe(50);
 
     act(() => {
       result.current.resetState();
@@ -141,14 +155,23 @@ describe('useTimer', () => {
     expect(result.current.time).toBe(0);
     expect(result.current.isRunning).toBe(false);
     expect(result.current.isJoined).toBe(false);
+    expect(result.current.startTime).toBeNull();
+    expect(result.current.pausedTime).toBe(0);
   });
 
-  it('should continue timer from a set time value', () => {
+  it('should continue timer from paused time value', () => {
     const { result } = renderHook(() => useTimer());
+    const mockStartTime = Date.now();
 
     act(() => {
-      result.current.setTime(50);
+      result.current.setPausedTime(50); // Previously accumulated 50 seconds
+      result.current.setStartTime(mockStartTime);
       result.current.setIsRunning(true);
+    });
+
+    // Time should include paused time
+    act(() => {
+      vi.advanceTimersByTime(100); // Wait for first update
     });
 
     expect(result.current.time).toBe(50);
@@ -158,5 +181,22 @@ describe('useTimer', () => {
     });
 
     expect(result.current.time).toBe(52);
+  });
+
+  it('should set startTime and pausedTime correctly', () => {
+    const { result } = renderHook(() => useTimer());
+    const mockTime = Date.now();
+
+    act(() => {
+      result.current.setStartTime(mockTime);
+    });
+
+    expect(result.current.startTime).toBe(mockTime);
+
+    act(() => {
+      result.current.setPausedTime(100);
+    });
+
+    expect(result.current.pausedTime).toBe(100);
   });
 });

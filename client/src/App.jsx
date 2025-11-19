@@ -13,25 +13,57 @@ import './App.css';
 
 function App() {
   // Custom hooks for state management
-  const { timerId, setTimerId, time, setTime, isRunning, setIsRunning, setIsJoined, resetState } = useTimer();
+  const {
+    timerId,
+    setTimerId,
+    time,
+    setTime,
+    isRunning,
+    setIsRunning,
+    setIsJoined,
+    startTime,
+    setStartTime,
+    pausedTime,
+    setPausedTime,
+    resetState,
+  } = useTimer();
   const { message, showMessage } = useNotification(3000);
   const timerSectionRef = useRef(null);
 
   // Socket event callbacks
   const socketCallbacks = useMemo(() => ({
-    onTimerUpdate: (timer) => {
-      setTime(timer.time);
-      setIsRunning(timer.running);
+    onTimerState: (data) => {
+      // Receive initial timer state when joining
+      setStartTime(data.startTime);
+      setPausedTime(data.pausedTime);
+      setIsRunning(data.running);
+      if (data.running && data.startTime) {
+        // Calculate current time for already running timer
+        const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
+        setTime(data.pausedTime + elapsed);
+      } else {
+        setTime(data.pausedTime);
+      }
     },
-    onTimerStarted: () => {
+    onTimerStarted: (data) => {
+      // Timer started - sync with server timestamp
+      setStartTime(data.startTime);
+      setPausedTime(data.pausedTime);
       setIsRunning(true);
     },
-    onTimerStopped: () => {
+    onTimerStopped: (data) => {
+      // Timer stopped - update paused time
+      setPausedTime(data.pausedTime);
+      setTime(data.pausedTime);
       setIsRunning(false);
+      setStartTime(null);
     },
-    onTimerReset: (data) => {
-      setTime(data.time);
-      setIsRunning(data.running);
+    onTimerReset: () => {
+      // Timer reset - clear everything
+      setTime(0);
+      setPausedTime(0);
+      setStartTime(null);
+      setIsRunning(false);
       showMessage('Timer has been reset', 'success');
     },
     onJoinSuccess: (data) => {
@@ -45,7 +77,7 @@ function App() {
     onConnectError: () => {
       showMessage('Failed to connect to server', 'error');
     },
-  }), [setTime, setIsRunning, setIsJoined, showMessage, resetState]);
+  }), [setTime, setIsRunning, setIsJoined, setStartTime, setPausedTime, showMessage, resetState]);
 
   // Initialize socket connection
   const socket = useSocket(socketCallbacks);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 /**
- * Custom hook for managing timer state
+ * Custom hook for managing timer state with timestamp-based synchronization
  * @returns {Object} Timer state and setters
  */
 export const useTimer = () => {
@@ -9,23 +9,29 @@ export const useTimer = () => {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
+  const [startTime, setStartTime] = useState(null);
+  const [pausedTime, setPausedTime] = useState(0);
 
-  // Client-side timer for smooth updates
+  // Client-side timer that calculates time from timestamps
+  // Updates more frequently (100ms) for smooth display
   useEffect(() => {
     let interval;
-    if (isRunning) {
+    if (isRunning && startTime !== null) {
       interval = setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
-      }, 1000);
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setTime(pausedTime + elapsed);
+      }, 100); // Update every 100ms for smooth display
     }
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, startTime, pausedTime]);
 
   const resetState = () => {
     setTimerId(null);
     setTime(0);
     setIsRunning(false);
     setIsJoined(false);
+    setStartTime(null);
+    setPausedTime(0);
   };
 
   return {
@@ -37,6 +43,10 @@ export const useTimer = () => {
     setIsRunning,
     isJoined,
     setIsJoined,
+    startTime,
+    setStartTime,
+    pausedTime,
+    setPausedTime,
     resetState,
   };
 };

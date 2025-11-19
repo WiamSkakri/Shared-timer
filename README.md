@@ -1,46 +1,45 @@
 # Shared Timer
 
-A **production-ready**, real-time collaborative timer application built with modern best practices, comprehensive test coverage, and clean architecture. This project demonstrates full-stack development expertise with real-time web technologies, test-driven development, and professional code organization.
+A real-time collaborative timer application built with React, Node.js, and Socket.io. Multiple users can join the same timer session and control it together with synchronized updates across all clients.
 
-## ✨ Highlights
+## Highlights
 
-- 🏗️ **Clean Architecture** - Modular component design with separation of concerns
-- 🧪 **75+ Comprehensive Tests** - 100% component coverage with Vitest & React Testing Library
-- ⚡ **Real-time Synchronization** - WebSocket-based instant updates across all connected clients
-- 🎨 **Modern Tech Stack** - React 19, Vite, Socket.io, and cutting-edge tooling
-- 📱 **Responsive Design** - Mobile-first approach with elegant UI/UX
-- 🔒 **Production Ready** - Error handling, input validation, and edge case management
+- Clean architecture with modular component design
+- 76 comprehensive tests with Vitest and React Testing Library
+- Real-time synchronization using WebSocket technology
+- Modern tech stack: React 19, Vite, Socket.io
+- Responsive design for mobile and desktop
+- Error handling and input validation
 
-## 🎯 Key Features
+## Key Features
 
-- **Real-time Synchronization** - All connected users see the same timer state instantly via WebSockets
-- **Shareable Timer Sessions** - Create a timer and share the unique UUID with others to join
+- **Real-time Synchronization** - All connected users see the same timer state instantly
+- **Shareable Timer Sessions** - Create a timer and share the readable ID with others
 - **Collaborative Controls** - Any participant can start, pause, or reset the timer
-- **Multi-user Support** - Unlimited users can join the same timer session simultaneously
-- **Smart State Management** - Custom React hooks for clean, reusable logic
-- **Automatic Cleanup** - Server automatically removes inactive timers after 30 minutes
-- **HH:MM:SS Display** - Professional time formatting supporting hours, minutes, and seconds
+- **Multi-user Support** - Unlimited users can join the same timer session
+- **Smart State Management** - Custom React hooks for reusable logic
+- **Automatic Cleanup** - Server removes inactive timers after 30 minutes
+- **Low Latency Architecture** - Timestamp-based synchronization for smooth updates
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
-- **React 19.2** - Latest React with modern hooks and concurrent features
-- **Vite 7.2** - Lightning-fast build tool with HMR
-- **Socket.io Client 4.8** - Real-time bidirectional communication
-- **Vitest 4.0** - Next-generation testing framework
-- **React Testing Library** - Best practices for component testing
-- **Happy-DOM** - Lightweight DOM implementation for tests
+- React 19.2 with modern hooks
+- Vite 7.2 for fast builds and HMR
+- Socket.io Client 4.8 for real-time communication
+- Vitest 4.0 for testing
+- React Testing Library for component tests
+- Happy-DOM for lightweight test environment
 
 ### Backend
-- **Node.js** - JavaScript runtime
-- **Express.js 4.21** - Minimal web framework
-- **Socket.io 4.8** - WebSocket server with fallbacks
-- **UUID** - Cryptographically secure unique identifiers
+- Node.js
+- Express.js 4.21 web framework
+- Socket.io 4.8 for WebSocket communication
 
 ### Development Tools
-- **ESLint** - Code quality and consistency
-- **Concurrently** - Run multiple processes simultaneously
-- **Vitest UI** - Visual test interface for debugging
+- ESLint for code quality
+- Concurrently for running multiple processes
+- Vitest UI for visual test debugging
 
 ## Problem Statement
 
@@ -113,29 +112,29 @@ http://localhost:3000 (production)
 6. Use **Start**, **Pause**, and **Reset** buttons to control the timer
 7. All connected users will see the timer update in real-time
 
-## 🧪 Testing
+## Testing
 
-This project demonstrates professional testing practices with **75+ comprehensive tests** covering all layers of the application.
+The application includes 76 comprehensive tests covering all layers of the application.
 
 ### Test Coverage
 
 ```
-✅ 9 Test Suites (100% pass rate)
-✅ 75 Tests (100% pass rate)
-✅ Components: 41 tests
-✅ Hooks: 27 tests
-✅ Services: 10 tests
-✅ Utils: 7 tests
+9 Test Suites - all passing
+76 Tests - all passing
+- Component tests: 41
+- Hook tests: 18
+- Service tests: 10
+- Utility tests: 7
 ```
 
 ### Running Tests
 
 ```bash
-# Run tests in watch mode (development)
+# Run tests in watch mode
 cd client
 npm test
 
-# Run tests once (CI/CD)
+# Run tests once
 npm run test:run
 
 # Open visual test UI
@@ -148,87 +147,38 @@ npm run test:coverage
 ### Test Structure
 
 #### Component Tests (41 tests)
-Each component has comprehensive tests ensuring correct rendering, user interactions, and edge cases:
+- TimerDisplay (5 tests) - Time formatting, prop updates, CSS classes
+- TimerControls (10 tests) - Button clicks, enable/disable states, callbacks
+- TimerJoin (11 tests) - Input validation, Enter key support, form submission
+- Notification (6 tests) - Show/hide logic, message types, prop changes
+- TimerIdDisplay (9 tests) - Conditional rendering, ID handling, updates
 
-- **TimerDisplay** (5 tests) - Time formatting, prop updates, CSS classes
-- **TimerControls** (10 tests) - Button clicks, enable/disable states, callbacks
-- **TimerJoin** (11 tests) - Input validation, Enter key support, form submission
-- **Notification** (6 tests) - Show/hide logic, message types, prop changes
-- **TimerIdDisplay** (9 tests) - Conditional rendering, UUID handling, updates
-
-#### Hook Tests (27 tests)
-Custom hooks tested with React Testing Library's `renderHook`:
-
-- **useTimer** (10 tests) - State management, timer intervals, reset functionality
-- **useNotification** (7 tests) - Message handling, auto-clear timers, manual clear
-- **useSocket** - Integration tested via components
+#### Hook Tests (18 tests)
+- useTimer (11 tests) - Timestamp-based state management, timer calculations, reset functionality
+- useNotification (7 tests) - Message handling, auto-clear timers, manual clear
+- useSocket - Integration tested via components
 
 #### Service Tests (10 tests)
-API layer tested with mocked `fetch`:
-
-- **timerService** (10 tests) - HTTP requests, error handling, response parsing
+- timerService (10 tests) - HTTP requests, error handling, response parsing
 
 #### Utility Tests (7 tests)
-Pure functions tested for correctness:
+- timeFormatter (7 tests) - HH:MM:SS formatting, edge cases, zero-padding
 
-- **timeFormatter** (7 tests) - HH:MM:SS formatting, edge cases, padding
+### Testing Stack
 
-### Testing Technologies
+- Vitest for test execution
+- React Testing Library for component testing
+- @testing-library/user-event for user interactions
+- Happy-DOM for DOM implementation
+- Vi for mocking and spies
 
-- **Vitest** - Next-generation test runner (faster than Jest)
-- **React Testing Library** - User-centric component testing
-- **@testing-library/user-event** - Realistic user interactions
-- **Happy-DOM** - Lightweight DOM implementation
-- **Vi (Vitest Mocks)** - Powerful mocking utilities
+### Testing Approach
 
-### Testing Best Practices Demonstrated
+The tests focus on user behavior rather than implementation details. All components, hooks, and utilities have comprehensive test coverage including edge cases, error conditions, and boundary values. External dependencies like Socket.io and fetch are properly mocked to ensure isolated unit tests.
 
-✅ **User-Centric Testing** - Tests focus on user behavior, not implementation details
-✅ **Comprehensive Coverage** - All components, hooks, and utilities tested
-✅ **Edge Case Handling** - Empty states, error conditions, and boundary values
-✅ **Mocking Strategy** - External dependencies (Socket.io, fetch) properly mocked
-✅ **Test Organization** - Clear describe/it blocks with descriptive names
-✅ **Async Handling** - Proper handling of timers and async operations
-✅ **Accessibility** - Using semantic queries (getByText, getByRole)
+## Project Architecture
 
-### Example Test
-
-```javascript
-// Component test example
-describe('TimerControls', () => {
-  it('should disable Start button when timer is running', () => {
-    render(
-      <TimerControls
-        isRunning={true}
-        onStart={mockOnStart}
-        onStop={mockOnStop}
-        onReset={mockOnReset}
-      />
-    );
-
-    const startButton = screen.getByText('Start');
-    expect(startButton).toBeDisabled();
-  });
-});
-
-// Hook test example
-describe('useTimer', () => {
-  it('should increment time when timer is running', () => {
-    const { result } = renderHook(() => useTimer());
-
-    act(() => {
-      result.current.setIsRunning(true);
-      vi.advanceTimersByTime(3000);
-    });
-
-    expect(result.current.time).toBe(3);
-  });
-});
-```
-
-## 📁 Project Architecture
-
-This project follows **clean architecture principles** with clear separation of concerns:
+This project follows clean architecture principles with clear separation of concerns:
 
 ```
 Shared-timer/
@@ -277,67 +227,50 @@ Shared-timer/
 - **Test Co-location**: Tests live alongside source files for easy maintenance
 - **Separation of Concerns**: Clear boundaries between UI, state, and business logic
 
-## 🚀 Technical Achievements
+## Technical Details
 
-This project showcases professional software engineering practices:
+### Code Quality
+- Modular design with components, hooks, services, and utilities properly separated
+- Custom hooks for reusable logic
+- DRY principles applied throughout
+- Single responsibility per module
+- Readable and maintainable code
 
-### Code Quality & Architecture
-- ✅ **Modular Design** - Components, hooks, services, and utils properly separated
-- ✅ **Custom Hooks** - Reusable logic extracted from components
-- ✅ **DRY Principles** - No code duplication, shared logic in utilities
-- ✅ **Single Responsibility** - Each module has one clear purpose
-- ✅ **Clean Code** - Readable, maintainable, and well-documented
-
-### Testing Excellence
-- ✅ **75+ Tests** - Comprehensive coverage across all layers
-- ✅ **Test-Driven Development** - Tests written alongside features
-- ✅ **Edge Cases** - Boundary values, error conditions, and empty states tested
-- ✅ **User-Centric** - Tests focus on behavior, not implementation
-- ✅ **CI/CD Ready** - Tests can run in automated pipelines
+### Testing
+- 76 comprehensive tests across all layers
+- Tests written alongside features
+- Edge cases, boundary values, and error conditions covered
+- User-centric testing approach
+- Ready for CI/CD pipelines
 
 ### Real-Time Architecture
-- ✅ **WebSocket Communication** - Bi-directional real-time updates
-- ✅ **Room-Based Architecture** - Isolated timer sessions
-- ✅ **State Synchronization** - Server as single source of truth
-- ✅ **Automatic Cleanup** - Memory management with inactive timer removal
-- ✅ **Connection Handling** - Graceful handling of connect/disconnect events
+- WebSocket communication for bidirectional updates
+- Room-based architecture for isolated timer sessions
+- Timestamp-based synchronization for low latency
+- Automatic cleanup of inactive timers
+- Graceful connection handling
 
-### Performance & UX
-- ✅ **Fast Build Times** - Vite's instant HMR
-- ✅ **Smooth Updates** - Client-side timer for responsive UI
-- ✅ **Responsive Design** - Mobile-first CSS with media queries
-- ✅ **Error Handling** - User-friendly error messages
-- ✅ **Input Validation** - Prevents invalid timer operations
+### Performance
+- Vite for fast builds and HMR
+- Client-side timestamp calculations for smooth updates (100ms intervals)
+- Responsive design with mobile-first CSS
+- Error handling with user-friendly messages
+- Input validation to prevent invalid operations
 
-## 🎓 Learning Outcomes
+## Future Enhancements
 
-This project demonstrates proficiency in:
+- Database persistence (PostgreSQL or MongoDB)
+- User authentication with timer history
+- Countdown mode with alerts
+- Dark mode and theme customization
+- Pre-configured timer templates (Pomodoro, workout, etc.)
+- Analytics dashboard
+- Mobile app version
+- Browser notifications
+- Voice commands
+- Export timer data as CSV
 
-- **Full-Stack Development** - Frontend + Backend + Real-time communication
-- **Modern React** - Hooks, custom hooks, component composition
-- **Test-Driven Development** - Writing maintainable, testable code
-- **WebSocket Technology** - Real-time bidirectional communication
-- **Clean Architecture** - Separation of concerns, SOLID principles
-- **Build Tools** - Vite configuration and optimization
-- **Version Control** - Git best practices
-- **Documentation** - Clear, professional README
-
-## 🔮 Future Enhancements
-
-Potential features for future iterations:
-
-- [ ] **Database Persistence** - Save timer state with PostgreSQL or MongoDB
-- [ ] **User Authentication** - JWT-based auth with timer history
-- [ ] **Countdown Mode** - Set target duration with alerts
-- [ ] **Custom Themes** - Dark mode and color customization
-- [ ] **Timer Templates** - Pre-configured timers (Pomodoro, workout, etc.)
-- [ ] **Analytics Dashboard** - Track usage statistics and timer history
-- [ ] **Mobile App** - React Native version for iOS and Android
-- [ ] **Browser Notifications** - Desktop alerts when timer completes
-- [ ] **Voice Commands** - Start/stop timer with speech recognition
-- [ ] **Export Data** - Download timer sessions as CSV
-
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! To contribute:
 
@@ -351,45 +284,10 @@ Contributions are welcome! To contribute:
 
 Please ensure your code follows the existing style and includes appropriate tests.
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 👤 Author
+## Author
 
-**Wiam Skakri**
-
-- GitHub: [@WiamSkakri](https://github.com/WiamSkakri)
-- Portfolio: [Your Portfolio URL]
-- LinkedIn: [Your LinkedIn URL]
-
-## 🙏 Acknowledgments
-
-- **React Team** - For the amazing React library
-- **Socket.io Team** - For robust WebSocket implementation
-- **Vitest Team** - For the next-gen testing framework
-- **Vite Team** - For the blazing-fast build tool
-
----
-
-## 💼 Portfolio Showcase
-
-**This project demonstrates:**
-
-✨ **Production-Ready Code** - Error handling, validation, and edge cases
-✨ **Test-Driven Development** - 75+ tests with 100% pass rate
-✨ **Clean Architecture** - Modular, maintainable, scalable design
-✨ **Modern Technologies** - React 19, Vite, Socket.io, Vitest
-✨ **Real-Time Systems** - WebSocket-based synchronization
-✨ **Professional Documentation** - Comprehensive README with examples
-
-**Perfect for demonstrating:**
-- Full-stack JavaScript development
-- Real-time application architecture
-- Testing best practices
-- Modern frontend tooling
-- Clean code principles
-
----
-
-*Built with ❤️ as a portfolio piece showcasing modern full-stack development skills*
+Wiam Skakri - [@WiamSkakri](https://github.com/WiamSkakri)

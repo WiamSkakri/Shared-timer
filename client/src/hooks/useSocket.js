@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 /**
  * Custom hook for managing Socket.io connection and events
  * @param {Object} callbacks - Object containing callback functions for socket events
- * @param {Function} callbacks.onTimerUpdate - Called when timer state updates
+ * @param {Function} callbacks.onTimerState - Called when initial timer state is received
  * @param {Function} callbacks.onTimerStarted - Called when timer starts
  * @param {Function} callbacks.onTimerStopped - Called when timer stops
  * @param {Function} callbacks.onTimerReset - Called when timer resets
@@ -23,7 +23,7 @@ export const useSocket = (callbacks) => {
     const socket = socketRef.current;
 
     // Register event listeners
-    socket.on('timerUpdate', callbacks.onTimerUpdate);
+    socket.on('timerState', callbacks.onTimerState);
     socket.on('timerStarted', callbacks.onTimerStarted);
     socket.on('timerStopped', callbacks.onTimerStopped);
     socket.on('timerReset', callbacks.onTimerReset);
@@ -33,7 +33,7 @@ export const useSocket = (callbacks) => {
 
     // Cleanup on unmount
     return () => {
-      socket.off('timerUpdate');
+      socket.off('timerState');
       socket.off('timerStarted');
       socket.off('timerStopped');
       socket.off('timerReset');

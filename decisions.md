@@ -137,3 +137,124 @@ If issues arise, can revert to server-authoritative approach by:
 ---
 
 This decision was made to optimize for production deployment with low latency and good scalability characteristics.
+
+## 2025-11-19: Timer ID Generation - UUID to Readable Word Combinations
+
+### Context
+The application uses unique timer IDs to allow users to create and share timers. When a user creates a new timer via the `/create-timer` endpoint, the server generates a unique identifier.
+
+### Previous Implementation (UUID v4)
+
+**How it worked:**
+- Used the `uuid` npm package to generate UUIDs
+- Generated globally unique identifiers using UUID v4 format
+- Example IDs: `550e8400-e29b-41d4-a716-446655440000`
+
+**Code location:**
+- Server ID generation: `server.js:24` (before change)
+- Required dependency: `uuid` package
+
+**Issues with this approach:**
+1. **Not user-friendly**: Long, complex strings (36 characters with hyphens)
+2. **Hard to remember**: Random hex characters have no meaning
+3. **Difficult to communicate**: Users struggle to share IDs verbally or via text
+4. **Error-prone**: Easy to make typos when entering manually
+5. **Poor user experience**: Not suitable for casual sharing between friends/colleagues
+
+### New Implementation (Readable Word Combinations)
+
+**How it works:**
+- Custom `generateReadableId()` function generates memorable IDs
+- Format: `adjective-noun-number` (e.g., `happy-cloud-42`, `rainy-kitchen-356`)
+- Uses predefined word lists with funny, friendly words
+- Includes collision detection to ensure uniqueness
+
+**Data structure:**
+```javascript
+// 48 adjectives (happy, silly, crazy, rainy, etc.)
+// 56 nouns (cloud, kitchen, penguin, wizard, etc.)
+// Numbers 0-999
+// Total possible combinations: 48 × 56 × 1000 = 2,688,000 unique IDs
+```
+
+**Example IDs generated:**
+- `cloudy-wizard-356`
+- `bouncy-comet-888`
+- `wild-unicorn-520`
+- `rainy-island-310`
+- `spicy-treasure-718`
+- `quirky-kitchen-694`
+
+**Code location:**
+- Word lists: `server.js:12-30`
+- Generator function: `server.js:32-51`
+- Usage: `server.js:64`
+
+**Changes made:**
+1. Removed `uuid` package dependency
+2. Added two word lists (adjectives and nouns) with fun, memorable words
+3. Implemented `generateReadableId()` function with collision detection
+4. Replaced `uuidv4()` call with `generateReadableId()` in `/create-timer` endpoint
+
+### Benefits of New Implementation
+
+**User experience improvements:**
+- Easy to remember and share (e.g., "rainy kitchen 356")
+- Fun and friendly tone aligns with casual timer sharing
+- Shorter to type (average 20-25 characters vs 36)
+- Can be communicated verbally without spelling individual characters
+- More approachable and less technical-looking
+
+**Practical benefits:**
+- Still highly unique (2.6+ million possible combinations)
+- Collision detection ensures no duplicates
+- No external dependencies required
+- Easier to debug and log (human-readable)
+- Better for screenshots and documentation
+
+### Trade-offs
+
+**Reduced entropy:**
+- UUID v4: ~122 bits of entropy (practically unlimited)
+- Readable IDs: ~21 bits of entropy (2.6M combinations)
+- For this application: More than sufficient (timers are temporary, cleaned up after inactivity)
+
+**Potential for collision:**
+- UUID v4: Collision probability effectively zero
+- Readable IDs: Requires collision detection logic
+- Mitigation: Built-in collision detection in `generateReadableId()`
+
+**Cultural considerations:**
+- English-language words may not translate well globally
+- Future consideration: Could add multi-language word lists
+
+### Decision
+
+Adopt readable word combination IDs for the following reasons:
+1. Dramatically improved user experience for sharing timers
+2. More memorable and fun (aligns with casual use case)
+3. Sufficient uniqueness for temporary timer sessions
+4. No performance impact (generation is still instant)
+5. Reduced dependencies (removed `uuid` package)
+6. Built-in collision detection ensures uniqueness
+
+### Examples of Word Lists
+
+**Adjectives (48 total):**
+happy, silly, crazy, lazy, fuzzy, dizzy, bouncy, sleepy, grumpy, snazzy, wacky, quirky, jolly, cheeky, funky, goofy, loopy, zippy, perky, sassy, clumsy, sparkly, wobbly, giggly, sneaky, dreamy, fluffy, bumpy, jumpy, lumpy, spicy, crispy, rainy, sunny, cloudy, breezy, foggy, snowy, windy, stormy, mighty, tiny, giant, swift, brave, bold, wild, calm
+
+**Nouns (56 total):**
+cloud, kitchen, pancake, waffle, muffin, cookie, pickle, noodle, potato, banana, taco, burrito, pizza, donut, cupcake, sandwich, penguin, koala, llama, panda, hamster, bunny, turtle, dolphin, octopus, narwhal, unicorn, dragon, phoenix, wizard, ninja, pirate, rocket, comet, planet, galaxy, meteor, rainbow, thunder, lightning, mountain, river, ocean, forest, desert, valley, volcano, island, robot, spaceship, castle, treasure, crystal, diamond, star, moon
+
+### Future Enhancements
+
+Potential improvements for consideration:
+- Allow users to customize/regenerate their timer ID
+- Add more word categories (verbs, colors, etc.)
+- Implement multi-language support
+- Add profanity filter for word combinations
+- Generate vanity IDs for premium users
+
+---
+
+This decision prioritizes user experience and shareability over maximum theoretical uniqueness.

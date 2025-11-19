@@ -130,7 +130,13 @@ io.on('connection', (socket) => {
     timers[timerId].connectedUsers++;
     timers[timerId].lastActivity = Date.now();
 
-    socket.emit('timerUpdate', timers[timerId]); // Send current timer state to new user
+    // Send current timer state to new user
+    const timer = timers[timerId];
+    socket.emit('timerState', {
+      startTime: timer.startTime,
+      pausedTime: timer.pausedTime,
+      running: timer.running,
+    });
     socket.emit('joinSuccess', { message: 'Successfully joined timer!' });
     console.log(`User joined timer: ${timerId} (${timers[timerId].connectedUsers} users connected)`);
 
@@ -138,30 +144,47 @@ io.on('connection', (socket) => {
     socket.on('startTimer', () => {
       if (timers[timerId] && !timers[timerId].running) {
         timers[timerId].running = true;
+        timers[timerId].startTime = Date.now();
         timers[timerId].lastActivity = Date.now();
-        io.to(timerId).emit('timerStarted'); // Notify all users in the room
-        console.log(`Timer ${timerId} started`); // Debug log
+
+        // Broadcast start event with timestamp to all users in the room
+        io.to(timerId).emit('timerStarted', {
+          startTime: timers[timerId].startTime,
+          pausedTime: timers[timerId].pausedTime,
+        });
+        console.log(`Timer ${timerId} started at ${timers[timerId].startTime}`);
       }
     });
 
     // Stop the timer
     socket.on('stopTimer', () => {
       if (timers[timerId] && timers[timerId].running) {
+        // Calculate accumulated time before stopping
+        const elapsed = Math.floor((Date.now() - timers[timerId].startTime) / 1000);
+        timers[timerId].pausedTime = timers[timerId].pausedTime + elapsed;
         timers[timerId].running = false;
+        timers[timerId].startTime = null;
         timers[timerId].lastActivity = Date.now();
-        io.to(timerId).emit('timerStopped'); // Notify all users in the room
-        console.log(`Timer ${timerId} stopped`); // Debug log
+
+        // Broadcast stop event with accumulated time to all users in the room
+        io.to(timerId).emit('timerStopped', {
+          pausedTime: timers[timerId].pausedTime,
+        });
+        console.log(`Timer ${timerId} stopped at ${timers[timerId].pausedTime} seconds`);
       }
     });
 
     // Reset the timer
     socket.on('resetTimer', () => {
       if (timers[timerId]) {
-        timers[timerId].time = 0;
+        timers[timerId].startTime = null;
+        timers[timerId].pausedTime = 0;
         timers[timerId].running = false;
         timers[timerId].lastActivity = Date.now();
-        io.to(timerId).emit('timerReset', { time: 0, running: false }); // Notify all users
-        console.log(`Timer ${timerId} reset`); // Debug log
+
+        // Notify all users of reset
+        io.to(timerId).emit('timerReset');
+        console.log(`Timer ${timerId} reset`);
       }
     });
   });
@@ -181,17 +204,15 @@ io.on('connection', (socket) => {
   });
 });
 
-// Update timers every second
+// Update last activity for running timers (no broadcast needed)
+// Clients calculate time locally from timestamps
 setInterval(() => {
-  for (const [id, timer] of Object.entries(timers)) {
+  for (const timer of Object.values(timers)) {
     if (timer.running) {
-      timer.time += 1; // Increment time
       timer.lastActivity = Date.now(); // Update activity time for running timers
-      io.to(id).emit('timerUpdate', timer); // Broadcast updated time to users in this room
-      console.log(`Timer ${id} updated to ${timer.time}`); // Debug log
     }
   }
-}, 1000);
+}, 60000); // Check every minute instead of every second
 
 // Cleanup inactive timers periodically
 setInterval(() => {

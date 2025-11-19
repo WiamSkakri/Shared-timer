@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(npm run test:run:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(for i in {1..5})",
+      "Bash(do curl -s http://localhost:3000/create-timer)",
+      "Bash(done)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []
