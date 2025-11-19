@@ -27,6 +27,12 @@ function App() {
       setIsRunning(false);
     });
 
+    socket.on('timerReset', (data) => {
+      setTime(data.time);
+      setIsRunning(data.running);
+      showMessage('Timer has been reset', 'success');
+    });
+
     socket.on('joinSuccess', (data) => {
       setIsJoined(true);
       showMessage(data.message, 'success');
@@ -46,6 +52,7 @@ function App() {
       socket.off('timerUpdate');
       socket.off('timerStarted');
       socket.off('timerStopped');
+      socket.off('timerReset');
       socket.off('joinSuccess');
       socket.off('error');
       socket.off('connect_error');
