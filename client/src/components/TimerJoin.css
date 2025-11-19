@@ -1,0 +1,87 @@
+/* Controls Section */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.join-section {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Input styling */
+.input {
+  flex: 1;
+  min-width: 200px;
+  padding: 14px 18px;
+  border: 2px solid #e0e0e0;
+  border-radius: 50px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  outline: none;
+  background-color: #fafafa;
+}
+
+.input:focus {
+  border-color: #667eea;
+  background-color: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.input::placeholder {
+  color: #999;
+}
+
+/* Button styling */
+.btn {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background-color: #111;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #333;
+}
+
+.btn-secondary {
+  background-color: #667eea;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #5568d3;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .join-section {
+    flex-direction: column;
+  }
+
+  .input {
+    min-width: 100%;
+  }
+}

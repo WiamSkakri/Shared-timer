@@ -1,130 +1,101 @@
-import { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
+import { useMemo } from 'react';
+import { useSocket, useSocketActions } from './hooks/useSocket';
+import { useTimer } from './hooks/useTimer';
+import { useNotification } from './hooks/useNotification';
+import { createTimer } from './services/timerService';
+import TimerDisplay from './components/TimerDisplay';
+import TimerJoin from './components/TimerJoin';
+import TimerControls from './components/TimerControls';
+import Notification from './components/Notification';
+import TimerIdDisplay from './components/TimerIdDisplay';
 import './App.css';
 
-const socket = io();
-
 function App() {
-  const [timerId, setTimerId] = useState(null);
-  const [time, setTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [inputTimerId, setInputTimerId] = useState('');
-  const [message, setMessage] = useState({ text: '', type: '' });
-  const [isJoined, setIsJoined] = useState(false);
+  // Custom hooks for state management
+  const { timerId, setTimerId, time, setTime, isRunning, setIsRunning, setIsJoined, resetState } = useTimer();
+  const { message, showMessage } = useNotification(3000);
 
-  useEffect(() => {
-    // Socket event listeners
-    socket.on('timerUpdate', (timer) => {
+  // Socket event callbacks
+  const socketCallbacks = useMemo(() => ({
+    onTimerUpdate: (timer) => {
       setTime(timer.time);
       setIsRunning(timer.running);
-    });
-
-    socket.on('timerStarted', () => {
+    },
+    onTimerStarted: () => {
       setIsRunning(true);
-    });
-
-    socket.on('timerStopped', () => {
+    },
+    onTimerStopped: () => {
       setIsRunning(false);
-    });
-
-    socket.on('timerReset', (data) => {
+    },
+    onTimerReset: (data) => {
       setTime(data.time);
       setIsRunning(data.running);
       showMessage('Timer has been reset', 'success');
-    });
-
-    socket.on('joinSuccess', (data) => {
+    },
+    onJoinSuccess: (data) => {
       setIsJoined(true);
       showMessage(data.message, 'success');
-    });
-
-    socket.on('error', (data) => {
+    },
+    onError: (data) => {
       showMessage(data.message, 'error');
-      setIsJoined(false);
-      setTimerId(null);
-    });
-
-    socket.on('connect_error', () => {
+      resetState();
+    },
+    onConnectError: () => {
       showMessage('Failed to connect to server', 'error');
-    });
+    },
+  }), [setTime, setIsRunning, setIsJoined, showMessage, resetState]);
 
-    return () => {
-      socket.off('timerUpdate');
-      socket.off('timerStarted');
-      socket.off('timerStopped');
-      socket.off('timerReset');
-      socket.off('joinSuccess');
-      socket.off('error');
-      socket.off('connect_error');
-    };
-  }, []);
+  // Initialize socket connection
+  const socket = useSocket(socketCallbacks);
+  const { joinTimer, startTimer, stopTimer, resetTimer } = useSocketActions(socket);
 
-  // Client-side timer for smooth updates
-  useEffect(() => {
-    let interval;
-    if (isRunning) {
-      interval = setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isRunning]);
-
-  const showMessage = (text, type) => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage({ text: '', type: '' }), 3000);
-  };
-
-  const formatTime = (seconds) => {
-    const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
-    const secs = String(seconds % 60).padStart(2, '0');
-    return `${mins}:${secs}`;
-  };
-
+  // Handler for creating a new timer
   const handleCreateTimer = async () => {
     try {
-      const response = await fetch('/create-timer');
-      const data = await response.json();
+      const data = await createTimer();
       setTimerId(data.timerId);
       showMessage(`Timer created! Share this ID: ${data.timerId}`, 'success');
-      socket.emit('joinTimer', data.timerId);
+      joinTimer(data.timerId);
     } catch (error) {
       showMessage('Failed to create timer', 'error');
     }
   };
 
-  const handleJoinTimer = () => {
-    const id = inputTimerId.trim();
+  // Handler for joining an existing timer
+  const handleJoinTimer = (id) => {
     if (!id) {
       showMessage('Please enter a timer ID', 'error');
       return;
     }
     setTimerId(id);
-    socket.emit('joinTimer', id);
+    joinTimer(id);
   };
 
+  // Handler for starting the timer
   const handleStart = () => {
     if (!timerId) {
       showMessage('Please create or join a timer first', 'error');
       return;
     }
-    socket.emit('startTimer');
+    startTimer();
   };
 
+  // Handler for stopping the timer
   const handleStop = () => {
     if (!timerId) {
       showMessage('Please create or join a timer first', 'error');
       return;
     }
-    socket.emit('stopTimer');
+    stopTimer();
   };
 
+  // Handler for resetting the timer
   const handleReset = () => {
     if (!timerId) {
       showMessage('Please create or join a timer first', 'error');
       return;
     }
-    socket.emit('resetTimer');
+    resetTimer();
   };
 
   return (
@@ -135,60 +106,25 @@ function App() {
           <div className="gradient-line"></div>
         </h1>
 
-        <div className="timer-display">{formatTime(time)}</div>
+        <TimerDisplay time={time} />
 
-        {message.text && (
-          <div className={`message ${message.type}`}>{message.text}</div>
-        )}
+        <Notification text={message.text} type={message.type} />
 
-        <div className="controls">
-          <button onClick={handleCreateTimer} className="btn btn-primary">
-            Create Timer
-          </button>
+        <TimerJoin
+          onCreateTimer={handleCreateTimer}
+          onJoinTimer={handleJoinTimer}
+        />
 
-          <div className="join-section">
-            <input
-              type="text"
-              value={inputTimerId}
-              onChange={(e) => setInputTimerId(e.target.value)}
-              placeholder="Enter Timer ID"
-              className="input"
+        {timerId && (
+          <>
+            <TimerControls
+              isRunning={isRunning}
+              onStart={handleStart}
+              onStop={handleStop}
+              onReset={handleReset}
             />
-            <button onClick={handleJoinTimer} className="btn btn-secondary">
-              Join Timer
-            </button>
-          </div>
-        </div>
-
-        {timerId && (
-          <div className="actions">
-            <button
-              onClick={handleStart}
-              className="btn btn-success"
-              disabled={isRunning}
-            >
-              Start
-            </button>
-            <button
-              onClick={handleStop}
-              className="btn btn-warning"
-              disabled={!isRunning}
-            >
-              Pause
-            </button>
-            <button
-              onClick={handleReset}
-              className="btn btn-danger"
-            >
-              Reset
-            </button>
-          </div>
-        )}
-
-        {timerId && (
-          <div className="timer-id-display">
-            <p>Timer ID: <code>{timerId}</code></p>
-          </div>
+            <TimerIdDisplay timerId={timerId} />
+          </>
         )}
       </div>
     </div>

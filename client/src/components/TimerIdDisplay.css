@@ -1,0 +1,24 @@
+/* Timer ID Display */
+.timer-id-display {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.timer-id-display p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.timer-id-display code {
+  background-color: #e9ecef;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  color: #667eea;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
