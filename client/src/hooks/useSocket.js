@@ -39,11 +39,14 @@ export const useSocket = (callbacks) => {
     socketRef.current = io(serverUrl, {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,  // Keep trying to reconnect
       timeout: 20000,
       autoConnect: true,
       path: '/socket.io',
       transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+      upgrade: true,
+      rememberUpgrade: true,
+      forceNew: false,  // Reuse existing connection
     });
 
     const socket = socketRef.current;
@@ -55,7 +58,28 @@ export const useSocket = (callbacks) => {
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('[Socket] Disconnected:', reason);
+      console.warn('[Socket] Disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        // Server forcefully disconnected, need to reconnect manually
+        console.log('[Socket] Server disconnected us, reconnecting...');
+        socket.connect();
+      }
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
+    });
+
+    socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log('[Socket] Reconnection attempt #', attemptNumber);
+    });
+
+    socket.on('reconnect_error', (error) => {
+      console.error('[Socket] Reconnection error:', error.message);
+    });
+
+    socket.on('reconnect_failed', () => {
+      console.error('[Socket] Reconnection failed completely');
     });
 
     socket.on('connect_error', (error) => {
@@ -63,10 +87,18 @@ export const useSocket = (callbacks) => {
       console.error('[Socket] Error details:', error);
     });
 
+    socket.io.engine.on('upgrade', (transport) => {
+      console.log('[Socket] Transport upgraded to:', transport.name);
+    });
+
     // Register event listeners with stable callback wrappers
     const timerStateHandler = (data) => {
       console.log('[Socket] Received timerState:', data);
       callbacksRef.current.onTimerState(data);
+    };
+    const durationSetHandler = (data) => {
+      console.log('[Socket] Received durationSet:', data);
+      callbacksRef.current.onDurationSet(data);
     };
     const timerStartedHandler = (data) => {
       console.log('[Socket] Received timerStarted:', data);
@@ -76,9 +108,13 @@ export const useSocket = (callbacks) => {
       console.log('[Socket] Received timerStopped:', data);
       callbacksRef.current.onTimerStopped(data);
     };
-    const timerResetHandler = () => {
-      console.log('[Socket] Received timerReset');
-      callbacksRef.current.onTimerReset();
+    const timerResetHandler = (data) => {
+      console.log('[Socket] Received timerReset:', data);
+      callbacksRef.current.onTimerReset(data);
+    };
+    const timerCompletedHandler = () => {
+      console.log('[Socket] Received timerCompleted');
+      callbacksRef.current.onTimerCompleted();
     };
     const joinSuccessHandler = (data) => {
       console.log('[Socket] Received joinSuccess:', data);
@@ -94,9 +130,11 @@ export const useSocket = (callbacks) => {
     };
 
     socket.on('timerState', timerStateHandler);
+    socket.on('durationSet', durationSetHandler);
     socket.on('timerStarted', timerStartedHandler);
     socket.on('timerStopped', timerStoppedHandler);
     socket.on('timerReset', timerResetHandler);
+    socket.on('timerCompleted', timerCompletedHandler);
     socket.on('joinSuccess', joinSuccessHandler);
     socket.on('error', errorHandler);
 
@@ -107,9 +145,11 @@ export const useSocket = (callbacks) => {
       socket.off('disconnect');
       socket.off('connect_error');
       socket.off('timerState', timerStateHandler);
+      socket.off('durationSet', durationSetHandler);
       socket.off('timerStarted', timerStartedHandler);
       socket.off('timerStopped', timerStoppedHandler);
       socket.off('timerReset', timerResetHandler);
+      socket.off('timerCompleted', timerCompletedHandler);
       socket.off('joinSuccess', joinSuccessHandler);
       socket.off('error', errorHandler);
       socket.off('connect_error', connectErrorHandler);
@@ -127,6 +167,8 @@ export const useSocket = (callbacks) => {
  * @returns {Object} Socket actions
  */
 export const useSocketActions = (socket) => {
+  const currentTimerIdRef = useRef(null);
+
   const emitWhenConnected = (eventName, data) => {
     if (!socket) {
       console.error('[Socket] Socket not initialized');
@@ -146,8 +188,32 @@ export const useSocketActions = (socket) => {
     }
   };
 
+  // Set up auto-rejoin on reconnection
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleReconnect = () => {
+      console.log('[Socket] Handling reconnection...');
+      if (currentTimerIdRef.current) {
+        console.log('[Socket] Auto-rejoining timer:', currentTimerIdRef.current);
+        socket.emit('joinTimer', currentTimerIdRef.current);
+      }
+    };
+
+    socket.on('reconnect', handleReconnect);
+
+    return () => {
+      socket.off('reconnect', handleReconnect);
+    };
+  }, [socket]);
+
   const joinTimer = (timerId) => {
+    currentTimerIdRef.current = timerId;
     emitWhenConnected('joinTimer', timerId);
+  };
+
+  const setDuration = (durationInSeconds) => {
+    emitWhenConnected('setDuration', durationInSeconds);
   };
 
   const startTimer = () => {
@@ -164,6 +230,7 @@ export const useSocketActions = (socket) => {
 
   return {
     joinTimer,
+    setDuration,
     startTimer,
     stopTimer,
     resetTimer,

@@ -14,6 +14,11 @@ const io = new Server(server, {
   },
   path: '/socket.io',
   transports: ['websocket', 'polling'],  // Support both transports
+  pingTimeout: 60000,  // How long to wait for pong before disconnect (60 seconds)
+  pingInterval: 25000,  // Send ping every 25 seconds to keep connection alive
+  upgradeTimeout: 30000,  // Time to wait for upgrade to complete
+  maxHttpBufferSize: 1e6,  // 1 MB buffer size
+  allowUpgrades: true,  // Allow transport upgrades
 });
 
 let timers = {};
@@ -77,8 +82,9 @@ app.get('/health', (req, res) => {
 app.get('/create-timer', (req, res) => {
   const timerId = generateReadableId(); // Generate unique, readable timer ID
   timers[timerId] = {
-    startTime: null,      // Timestamp when timer started (null if not running)
-    pausedTime: 0,        // Accumulated time in seconds when paused
+    duration: 0,          // Total countdown duration in seconds (set by user)
+    remainingTime: 0,     // Remaining time in seconds
+    endTime: null,        // Timestamp when countdown reaches 0 (null if not running)
     running: false,
     lastActivity: Date.now(),
     connectedUsers: 0,
@@ -94,11 +100,10 @@ app.get('/api/stats', (req, res) => {
     activeTimers: Object.values(timers).filter(t => t.running).length,
     totalConnectedUsers: Object.values(timers).reduce((sum, t) => sum + t.connectedUsers, 0),
     timers: Object.entries(timers).map(([id, timer]) => {
-      // Calculate current time for running timers
-      let currentTime = timer.pausedTime;
-      if (timer.running && timer.startTime) {
-        const elapsed = Math.floor((now - timer.startTime) / 1000);
-        currentTime = timer.pausedTime + elapsed;
+      // Calculate current remaining time for running timers
+      let currentTime = timer.remainingTime;
+      if (timer.running && timer.endTime) {
+        currentTime = Math.max(0, Math.floor((timer.endTime - now) / 1000));
       }
       return {
         id: id.substring(0, 8) + '...',
@@ -146,65 +151,141 @@ io.on('connection', (socket) => {
 
     // Send current timer state to new user
     const timer = timers[timerId];
+    
+    // Calculate current remaining time if timer is running
+    let currentRemaining = timer.remainingTime;
+    if (timer.running && timer.endTime) {
+      currentRemaining = Math.max(0, Math.floor((timer.endTime - Date.now()) / 1000));
+    }
+    
     socket.emit('timerState', {
-      startTime: timer.startTime,
-      pausedTime: timer.pausedTime,
+      duration: timer.duration,
+      remainingTime: currentRemaining,
+      endTime: timer.endTime,
       running: timer.running,
     });
     socket.emit('joinSuccess', { message: 'Successfully joined timer!' });
     console.log(`User joined timer: ${timerId} (${timers[timerId].connectedUsers} users connected)`);
+  });
 
-    // Start the timer
-    socket.on('startTimer', () => {
-      console.log(`[Server] Received startTimer for ${timerId}`);
-      if (timers[timerId] && !timers[timerId].running) {
-        timers[timerId].running = true;
-        timers[timerId].startTime = Date.now();
-        timers[timerId].lastActivity = Date.now();
+  // Timer control events - these work on the currentTimerId
+  // Moved outside joinTimer to avoid duplicate listeners
+  
+  // Set the duration for countdown (in seconds)
+  socket.on('setDuration', (durationInSeconds) => {
+    if (!currentTimerId) {
+      console.log('[Server] setDuration called but no timer joined');
+      return;
+    }
+    console.log(`[Server] Setting duration for ${currentTimerId}: ${durationInSeconds} seconds`);
+    if (timers[currentTimerId] && !timers[currentTimerId].running) {
+      timers[currentTimerId].duration = durationInSeconds;
+      timers[currentTimerId].remainingTime = durationInSeconds;
+      timers[currentTimerId].lastActivity = Date.now();
 
-        // Broadcast start event with timestamp to all users in the room
-        io.to(timerId).emit('timerStarted', {
-          startTime: timers[timerId].startTime,
-          pausedTime: timers[timerId].pausedTime,
-        });
-        console.log(`Timer ${timerId} started at ${timers[timerId].startTime}`);
-      } else {
-        console.log(`[Server] Cannot start timer ${timerId}: exists=${!!timers[timerId]}, running=${timers[timerId]?.running}`);
+      // Broadcast new duration to all users
+      io.to(currentTimerId).emit('durationSet', {
+        duration: durationInSeconds,
+        remainingTime: durationInSeconds,
+      });
+      console.log(`Timer ${currentTimerId} duration set to ${durationInSeconds} seconds`);
+    }
+  });
+  
+  socket.on('startTimer', () => {
+    if (!currentTimerId) {
+      console.log('[Server] startTimer called but no timer joined');
+      return;
+    }
+    console.log(`[Server] Received startTimer for ${currentTimerId}`);
+    if (timers[currentTimerId] && !timers[currentTimerId].running) {
+      const timer = timers[currentTimerId];
+      
+      // Can't start if no duration set
+      if (timer.remainingTime <= 0) {
+        console.log(`[Server] Cannot start timer ${currentTimerId}: no duration set`);
+        socket.emit('error', { message: 'Please set a duration first' });
+        return;
       }
-    });
+      
+      timer.running = true;
+      timer.endTime = Date.now() + (timer.remainingTime * 1000);
+      timer.lastActivity = Date.now();
 
-    // Stop the timer
-    socket.on('stopTimer', () => {
-      console.log(`[Server] Received stopTimer for ${timerId}`);
-      if (timers[timerId] && timers[timerId].running) {
-        // Calculate accumulated time before stopping
-        const elapsed = Math.floor((Date.now() - timers[timerId].startTime) / 1000);
-        timers[timerId].pausedTime = timers[timerId].pausedTime + elapsed;
-        timers[timerId].running = false;
-        timers[timerId].startTime = null;
-        timers[timerId].lastActivity = Date.now();
+      // Broadcast start event with end timestamp to all users in the room
+      io.to(currentTimerId).emit('timerStarted', {
+        endTime: timer.endTime,
+        remainingTime: timer.remainingTime,
+      });
+      console.log(`Timer ${currentTimerId} started, will end at ${timer.endTime}`);
+      
+      // Check when timer completes
+      const checkInterval = setInterval(() => {
+        if (!timers[currentTimerId] || !timers[currentTimerId].running) {
+          clearInterval(checkInterval);
+          return;
+        }
+        
+        const remaining = Math.max(0, Math.floor((timers[currentTimerId].endTime - Date.now()) / 1000));
+        
+        if (remaining === 0) {
+          clearInterval(checkInterval);
+          timers[currentTimerId].running = false;
+          timers[currentTimerId].remainingTime = 0;
+          timers[currentTimerId].endTime = null;
+          
+          // Notify all users that timer completed
+          io.to(currentTimerId).emit('timerCompleted');
+          console.log(`Timer ${currentTimerId} completed!`);
+        }
+      }, 1000);
+    } else {
+      console.log(`[Server] Cannot start timer ${currentTimerId}: exists=${!!timers[currentTimerId]}, running=${timers[currentTimerId]?.running}`);
+    }
+  });
 
-        // Broadcast stop event with accumulated time to all users in the room
-        io.to(timerId).emit('timerStopped', {
-          pausedTime: timers[timerId].pausedTime,
-        });
-        console.log(`Timer ${timerId} stopped at ${timers[timerId].pausedTime} seconds`);
-      }
-    });
+  socket.on('stopTimer', () => {
+    if (!currentTimerId) {
+      console.log('[Server] stopTimer called but no timer joined');
+      return;
+    }
+    console.log(`[Server] Received stopTimer for ${currentTimerId}`);
+    if (timers[currentTimerId] && timers[currentTimerId].running) {
+      // Calculate remaining time before stopping
+      const remaining = Math.max(0, Math.floor((timers[currentTimerId].endTime - Date.now()) / 1000));
+      timers[currentTimerId].remainingTime = remaining;
+      timers[currentTimerId].running = false;
+      timers[currentTimerId].endTime = null;
+      timers[currentTimerId].lastActivity = Date.now();
 
-    // Reset the timer
-    socket.on('resetTimer', () => {
-      if (timers[timerId]) {
-        timers[timerId].startTime = null;
-        timers[timerId].pausedTime = 0;
-        timers[timerId].running = false;
-        timers[timerId].lastActivity = Date.now();
+      // Broadcast stop event with remaining time to all users in the room
+      io.to(currentTimerId).emit('timerStopped', {
+        remainingTime: remaining,
+      });
+      console.log(`Timer ${currentTimerId} stopped with ${remaining} seconds remaining`);
+    }
+  });
 
-        // Notify all users of reset
-        io.to(timerId).emit('timerReset');
-        console.log(`Timer ${timerId} reset`);
-      }
-    });
+  socket.on('resetTimer', () => {
+    if (!currentTimerId) {
+      console.log('[Server] resetTimer called but no timer joined');
+      return;
+    }
+    console.log(`[Server] Received resetTimer for ${currentTimerId}`);
+    if (timers[currentTimerId]) {
+      const timer = timers[currentTimerId];
+      timer.endTime = null;
+      timer.remainingTime = timer.duration; // Reset to original duration
+      timer.running = false;
+      timer.lastActivity = Date.now();
+
+      // Notify all users of reset
+      io.to(currentTimerId).emit('timerReset', {
+        duration: timer.duration,
+        remainingTime: timer.duration,
+      });
+      console.log(`Timer ${currentTimerId} reset to ${timer.duration} seconds`);
+    }
   });
 
   // Handle user disconnect

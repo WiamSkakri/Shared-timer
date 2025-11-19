@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useSocket, useSocketActions } from './hooks/useSocket';
 import { useTimer } from './hooks/useTimer';
 import { useNotification } from './hooks/useNotification';
@@ -7,24 +7,31 @@ import LandingPage from './components/LandingPage';
 import TimerDisplay from './components/TimerDisplay';
 import TimerJoin from './components/TimerJoin';
 import TimerControls from './components/TimerControls';
+import DurationInput from './components/DurationInput';
 import Notification from './components/Notification';
 import TimerIdDisplay from './components/TimerIdDisplay';
 import './App.css';
 
 function App() {
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
   // Custom hooks for state management
   const {
     timerId,
     setTimerId,
     time,
     setTime,
+    duration,
+    setDuration,
     isRunning,
     setIsRunning,
     setIsJoined,
-    startTime,
-    setStartTime,
-    pausedTime,
-    setPausedTime,
+    endTime,
+    setEndTime,
     resetState,
   } = useTimer();
   const { message, showMessage } = useNotification(3000);
@@ -34,37 +41,57 @@ function App() {
   const socketCallbacks = useMemo(() => ({
     onTimerState: (data) => {
       // Receive initial timer state when joining
-      setStartTime(data.startTime);
-      setPausedTime(data.pausedTime);
+      setDuration(data.duration);
+      setEndTime(data.endTime);
       setIsRunning(data.running);
-      if (data.running && data.startTime) {
-        // Calculate current time for already running timer
-        const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
-        setTime(data.pausedTime + elapsed);
+      if (data.running && data.endTime) {
+        // Calculate current remaining time for already running timer
+        const remaining = Math.max(0, Math.floor((data.endTime - Date.now()) / 1000));
+        setTime(remaining);
       } else {
-        setTime(data.pausedTime);
+        setTime(data.remainingTime);
       }
     },
+    onDurationSet: (data) => {
+      // Duration was set
+      setDuration(data.duration);
+      setTime(data.remainingTime);
+      showMessage(`Timer set to ${Math.floor(data.duration / 60)}:${String(data.duration % 60).padStart(2, '0')}`, 'success');
+    },
     onTimerStarted: (data) => {
-      // Timer started - sync with server timestamp
-      setStartTime(data.startTime);
-      setPausedTime(data.pausedTime);
+      // Timer started - sync with server end timestamp
+      setEndTime(data.endTime);
       setIsRunning(true);
+      showMessage('Timer started!', 'success');
     },
     onTimerStopped: (data) => {
-      // Timer stopped - update paused time
-      setPausedTime(data.pausedTime);
-      setTime(data.pausedTime);
+      // Timer stopped - update remaining time
+      setTime(data.remainingTime);
       setIsRunning(false);
-      setStartTime(null);
+      setEndTime(null);
+      showMessage('Timer paused', 'success');
     },
-    onTimerReset: () => {
-      // Timer reset - clear everything
-      setTime(0);
-      setPausedTime(0);
-      setStartTime(null);
+    onTimerReset: (data) => {
+      // Timer reset - back to duration
+      setTime(data.remainingTime);
+      setDuration(data.duration);
+      setEndTime(null);
       setIsRunning(false);
       showMessage('Timer has been reset', 'success');
+    },
+    onTimerCompleted: () => {
+      // Timer reached 0!
+      setTime(0);
+      setIsRunning(false);
+      setEndTime(null);
+      showMessage('⏰ Time is up!', 'success');
+      // Play sound/notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Timer Complete!', {
+          body: 'Your countdown timer has finished.',
+          icon: '/vite.svg'
+        });
+      }
     },
     onJoinSuccess: (data) => {
       setIsJoined(true);
@@ -72,16 +99,15 @@ function App() {
     },
     onError: (data) => {
       showMessage(data.message, 'error');
-      resetState();
     },
     onConnectError: () => {
       showMessage('Failed to connect to server', 'error');
     },
-  }), [setTime, setIsRunning, setIsJoined, setStartTime, setPausedTime, showMessage, resetState]);
+  }), [setTime, setDuration, setIsRunning, setIsJoined, setEndTime, showMessage, resetState]);
 
   // Initialize socket connection
   const socket = useSocket(socketCallbacks);
-  const { joinTimer, startTimer, stopTimer, resetTimer } = useSocketActions(socket);
+  const { joinTimer, setDuration: setTimerDuration, startTimer, stopTimer, resetTimer } = useSocketActions(socket);
 
   // Handler for creating a new timer
   const handleCreateTimer = async () => {
@@ -132,6 +158,20 @@ function App() {
     resetTimer();
   };
 
+  // Handler for setting countdown duration
+  const handleSetDuration = (hours, minutes, seconds) => {
+    if (!timerId) {
+      showMessage('Please create or join a timer first', 'error');
+      return;
+    }
+    const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+    if (totalSeconds <= 0) {
+      showMessage('Please set a valid duration', 'error');
+      return;
+    }
+    setTimerDuration(totalSeconds);
+  };
+
   // Handler for scrolling to timer section
   const handleScrollToTimer = () => {
     timerSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -154,6 +194,10 @@ function App() {
 
           {timerId && (
             <>
+              <DurationInput 
+                onSetDuration={handleSetDuration}
+                disabled={isRunning}
+              />
               <TimerControls
                 isRunning={isRunning}
                 onStart={handleStart}

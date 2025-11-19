@@ -24,13 +24,13 @@ primary_region = 'iad'
     hard_limit = 1000
     soft_limit = 1000
 
-  # Enable WebSocket support
+  # Health check using the dedicated endpoint
   [[http_service.checks]]
     interval = "15s"
     timeout = "2s"
     grace_period = "5s"
     method = "GET"
-    path = "/socket.io/"
+    path = "/health"
 
 [[vm]]
   memory = '256mb'
