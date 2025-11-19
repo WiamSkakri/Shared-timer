@@ -7,7 +7,8 @@
       "Bash(do curl -s http://localhost:3000/create-timer)",
       "Bash(done)",
       "Bash(npm test:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

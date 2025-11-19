@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
 /**
@@ -15,39 +15,80 @@ import { io } from 'socket.io-client';
  */
 export const useSocket = (callbacks) => {
   const socketRef = useRef(null);
-  const [socket, setSocket] = useState(null);
+  const callbacksRef = useRef(callbacks);
 
+  // Update callbacks ref whenever they change
   useEffect(() => {
-    // Initialize socket connection
-    socketRef.current = io();
-    const socketInstance = socketRef.current;
-    setSocket(socketInstance);
-
-    // Register event listeners
-    socketInstance.on('timerState', callbacks.onTimerState);
-    socketInstance.on('timerStarted', callbacks.onTimerStarted);
-    socketInstance.on('timerStopped', callbacks.onTimerStopped);
-    socketInstance.on('timerReset', callbacks.onTimerReset);
-    socketInstance.on('joinSuccess', callbacks.onJoinSuccess);
-    socketInstance.on('error', callbacks.onError);
-    socketInstance.on('connect_error', callbacks.onConnectError);
-
-    // Cleanup on unmount
-    return () => {
-      socketInstance.off('timerState');
-      socketInstance.off('timerStarted');
-      socketInstance.off('timerStopped');
-      socketInstance.off('timerReset');
-      socketInstance.off('joinSuccess');
-      socketInstance.off('error');
-      socketInstance.off('connect_error');
-      socketInstance.disconnect();
-      socketRef.current = null;
-      setSocket(null);
-    };
+    callbacksRef.current = callbacks;
   }, [callbacks]);
 
-  return socket;
+  useEffect(() => {
+    // Prevent creating a new socket if one already exists
+    // This handles React StrictMode's double-mounting in development
+    if (socketRef.current) {
+      return;
+    }
+
+    // Initialize socket connection only once
+    // Use default transports but with better reconnection settings
+    socketRef.current = io({
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+      timeout: 20000,
+      autoConnect: true,
+    });
+
+    const socket = socketRef.current;
+
+    // Debug logging
+    socket.on('connect', () => {
+      console.log('[Socket] Connected');
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('[Socket] Disconnected:', reason);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[Socket] Connection error:', error.message);
+    });
+
+    // Register event listeners with stable callback wrappers
+    const timerStateHandler = (data) => callbacksRef.current.onTimerState(data);
+    const timerStartedHandler = (data) => callbacksRef.current.onTimerStarted(data);
+    const timerStoppedHandler = (data) => callbacksRef.current.onTimerStopped(data);
+    const timerResetHandler = () => callbacksRef.current.onTimerReset();
+    const joinSuccessHandler = (data) => callbacksRef.current.onJoinSuccess(data);
+    const errorHandler = (data) => callbacksRef.current.onError(data);
+    const connectErrorHandler = () => callbacksRef.current.onConnectError();
+
+    socket.on('timerState', timerStateHandler);
+    socket.on('timerStarted', timerStartedHandler);
+    socket.on('timerStopped', timerStoppedHandler);
+    socket.on('timerReset', timerResetHandler);
+    socket.on('joinSuccess', joinSuccessHandler);
+    socket.on('error', errorHandler);
+
+    // Cleanup on unmount only
+    return () => {
+      console.log('[Socket] Cleaning up and disconnecting');
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.off('timerState', timerStateHandler);
+      socket.off('timerStarted', timerStartedHandler);
+      socket.off('timerStopped', timerStoppedHandler);
+      socket.off('timerReset', timerResetHandler);
+      socket.off('joinSuccess', joinSuccessHandler);
+      socket.off('error', errorHandler);
+      socket.off('connect_error', connectErrorHandler);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, []); // Empty dependency array - only run once on mount
+
+  return socketRef.current;
 };
 
 /**
