@@ -30,20 +30,28 @@ export const useSocket = (callbacks) => {
     }
 
     // Initialize socket connection only once
-    // Use default transports but with better reconnection settings
-    socketRef.current = io({
+    // In production, connect to the same origin (empty string means same host)
+    // In development, Vite proxy will redirect to localhost:3000
+    const serverUrl = window.location.origin;
+
+    console.log('[Socket] Initializing connection to:', serverUrl);
+
+    socketRef.current = io(serverUrl, {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 5,
       timeout: 20000,
       autoConnect: true,
+      path: '/socket.io',
+      transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
     });
 
     const socket = socketRef.current;
 
     // Debug logging
     socket.on('connect', () => {
-      console.log('[Socket] Connected');
+      console.log('[Socket] Connected - ID:', socket.id);
+      console.log('[Socket] Transport:', socket.io.engine.transport.name);
     });
 
     socket.on('disconnect', (reason) => {
@@ -52,16 +60,38 @@ export const useSocket = (callbacks) => {
 
     socket.on('connect_error', (error) => {
       console.error('[Socket] Connection error:', error.message);
+      console.error('[Socket] Error details:', error);
     });
 
     // Register event listeners with stable callback wrappers
-    const timerStateHandler = (data) => callbacksRef.current.onTimerState(data);
-    const timerStartedHandler = (data) => callbacksRef.current.onTimerStarted(data);
-    const timerStoppedHandler = (data) => callbacksRef.current.onTimerStopped(data);
-    const timerResetHandler = () => callbacksRef.current.onTimerReset();
-    const joinSuccessHandler = (data) => callbacksRef.current.onJoinSuccess(data);
-    const errorHandler = (data) => callbacksRef.current.onError(data);
-    const connectErrorHandler = () => callbacksRef.current.onConnectError();
+    const timerStateHandler = (data) => {
+      console.log('[Socket] Received timerState:', data);
+      callbacksRef.current.onTimerState(data);
+    };
+    const timerStartedHandler = (data) => {
+      console.log('[Socket] Received timerStarted:', data);
+      callbacksRef.current.onTimerStarted(data);
+    };
+    const timerStoppedHandler = (data) => {
+      console.log('[Socket] Received timerStopped:', data);
+      callbacksRef.current.onTimerStopped(data);
+    };
+    const timerResetHandler = () => {
+      console.log('[Socket] Received timerReset');
+      callbacksRef.current.onTimerReset();
+    };
+    const joinSuccessHandler = (data) => {
+      console.log('[Socket] Received joinSuccess:', data);
+      callbacksRef.current.onJoinSuccess(data);
+    };
+    const errorHandler = (data) => {
+      console.log('[Socket] Received error:', data);
+      callbacksRef.current.onError(data);
+    };
+    const connectErrorHandler = () => {
+      console.log('[Socket] Connect error handler called');
+      callbacksRef.current.onConnectError();
+    };
 
     socket.on('timerState', timerStateHandler);
     socket.on('timerStarted', timerStartedHandler);
@@ -97,28 +127,39 @@ export const useSocket = (callbacks) => {
  * @returns {Object} Socket actions
  */
 export const useSocketActions = (socket) => {
-  const joinTimer = (timerId) => {
-    if (socket?.emit) {
-      socket.emit('joinTimer', timerId);
+  const emitWhenConnected = (eventName, data) => {
+    if (!socket) {
+      console.error('[Socket] Socket not initialized');
+      return;
     }
+
+    if (socket.connected) {
+      console.log(`[Socket] Emitting ${eventName}`, data);
+      socket.emit(eventName, data);
+    } else {
+      console.log(`[Socket] Waiting for connection to emit ${eventName}`);
+      // Wait for connection then emit
+      socket.once('connect', () => {
+        console.log(`[Socket] Connected, now emitting ${eventName}`, data);
+        socket.emit(eventName, data);
+      });
+    }
+  };
+
+  const joinTimer = (timerId) => {
+    emitWhenConnected('joinTimer', timerId);
   };
 
   const startTimer = () => {
-    if (socket?.emit) {
-      socket.emit('startTimer');
-    }
+    emitWhenConnected('startTimer');
   };
 
   const stopTimer = () => {
-    if (socket?.emit) {
-      socket.emit('stopTimer');
-    }
+    emitWhenConnected('stopTimer');
   };
 
   const resetTimer = () => {
-    if (socket?.emit) {
-      socket.emit('resetTimer');
-    }
+    emitWhenConnected('resetTimer');
   };
 
   return {

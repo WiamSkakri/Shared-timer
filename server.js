@@ -5,7 +5,16 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.NODE_ENV === 'production' 
+      ? true  // Allow same origin in production
+      : 'http://localhost:5173',  // Vite dev server in development
+    credentials: true,
+  },
+  path: '/socket.io',
+  transports: ['websocket', 'polling'],  // Support both transports
+});
 
 let timers = {};
 
@@ -58,6 +67,11 @@ const CLEANUP_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'client/dist')));
 }
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: Date.now() });
+});
 
 // Endpoint to create a new timer
 app.get('/create-timer', (req, res) => {
@@ -142,6 +156,7 @@ io.on('connection', (socket) => {
 
     // Start the timer
     socket.on('startTimer', () => {
+      console.log(`[Server] Received startTimer for ${timerId}`);
       if (timers[timerId] && !timers[timerId].running) {
         timers[timerId].running = true;
         timers[timerId].startTime = Date.now();
@@ -153,11 +168,14 @@ io.on('connection', (socket) => {
           pausedTime: timers[timerId].pausedTime,
         });
         console.log(`Timer ${timerId} started at ${timers[timerId].startTime}`);
+      } else {
+        console.log(`[Server] Cannot start timer ${timerId}: exists=${!!timers[timerId]}, running=${timers[timerId]?.running}`);
       }
     });
 
     // Stop the timer
     socket.on('stopTimer', () => {
+      console.log(`[Server] Received stopTimer for ${timerId}`);
       if (timers[timerId] && timers[timerId].running) {
         // Calculate accumulated time before stopping
         const elapsed = Math.floor((Date.now() - timers[timerId].startTime) / 1000);
