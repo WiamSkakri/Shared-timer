@@ -106,6 +106,17 @@ io.on('connection', (socket) => {
         console.log(`Timer ${timerId} stopped`); // Debug log
       }
     });
+
+    // Reset the timer
+    socket.on('resetTimer', () => {
+      if (timers[timerId]) {
+        timers[timerId].time = 0;
+        timers[timerId].running = false;
+        timers[timerId].lastActivity = Date.now();
+        io.to(timerId).emit('timerReset', { time: 0, running: false }); // Notify all users
+        console.log(`Timer ${timerId} reset`); // Debug log
+      }
+    });
   });
 
   // Handle user disconnect
