@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 
 /**
@@ -15,36 +15,39 @@ import { io } from 'socket.io-client';
  */
 export const useSocket = (callbacks) => {
   const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     // Initialize socket connection
     socketRef.current = io();
-
-    const socket = socketRef.current;
+    const socketInstance = socketRef.current;
+    setSocket(socketInstance);
 
     // Register event listeners
-    socket.on('timerState', callbacks.onTimerState);
-    socket.on('timerStarted', callbacks.onTimerStarted);
-    socket.on('timerStopped', callbacks.onTimerStopped);
-    socket.on('timerReset', callbacks.onTimerReset);
-    socket.on('joinSuccess', callbacks.onJoinSuccess);
-    socket.on('error', callbacks.onError);
-    socket.on('connect_error', callbacks.onConnectError);
+    socketInstance.on('timerState', callbacks.onTimerState);
+    socketInstance.on('timerStarted', callbacks.onTimerStarted);
+    socketInstance.on('timerStopped', callbacks.onTimerStopped);
+    socketInstance.on('timerReset', callbacks.onTimerReset);
+    socketInstance.on('joinSuccess', callbacks.onJoinSuccess);
+    socketInstance.on('error', callbacks.onError);
+    socketInstance.on('connect_error', callbacks.onConnectError);
 
     // Cleanup on unmount
     return () => {
-      socket.off('timerState');
-      socket.off('timerStarted');
-      socket.off('timerStopped');
-      socket.off('timerReset');
-      socket.off('joinSuccess');
-      socket.off('error');
-      socket.off('connect_error');
-      socket.disconnect();
+      socketInstance.off('timerState');
+      socketInstance.off('timerStarted');
+      socketInstance.off('timerStopped');
+      socketInstance.off('timerReset');
+      socketInstance.off('joinSuccess');
+      socketInstance.off('error');
+      socketInstance.off('connect_error');
+      socketInstance.disconnect();
+      socketRef.current = null;
+      setSocket(null);
     };
   }, [callbacks]);
 
-  return socketRef.current;
+  return socket;
 };
 
 /**
@@ -54,25 +57,25 @@ export const useSocket = (callbacks) => {
  */
 export const useSocketActions = (socket) => {
   const joinTimer = (timerId) => {
-    if (socket) {
+    if (socket?.emit) {
       socket.emit('joinTimer', timerId);
     }
   };
 
   const startTimer = () => {
-    if (socket) {
+    if (socket?.emit) {
       socket.emit('startTimer');
     }
   };
 
   const stopTimer = () => {
-    if (socket) {
+    if (socket?.emit) {
       socket.emit('stopTimer');
     }
   };
 
   const resetTimer = () => {
-    if (socket) {
+    if (socket?.emit) {
       socket.emit('resetTimer');
     }
   };

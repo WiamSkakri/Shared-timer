@@ -17,7 +17,7 @@ const TimerJoin = ({ onCreateTimer, onJoinTimer }) => {
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleJoinClick();
     }
@@ -34,7 +34,7 @@ const TimerJoin = ({ onCreateTimer, onJoinTimer }) => {
           type="text"
           value={inputTimerId}
           onChange={(e) => setInputTimerId(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyDown}
           placeholder="Enter Timer ID"
           className="input"
         />
