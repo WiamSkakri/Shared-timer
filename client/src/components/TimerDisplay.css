@@ -1,9 +1,10 @@
 /* Timer Display */
 .timer-display {
-  font-size: clamp(4rem, 12vw, 6rem);
+  font-size: clamp(4rem, 15vw, 8rem);
   font-weight: 700;
-  font-family: 'Courier New', monospace;
+  font-family: 'Kode Mono', monospace;
   color: #111;
-  margin: 2rem 0;
-  letter-spacing: 0.1em;
+  margin: 3rem 0;
+  letter-spacing: 0.05em;
+  line-height: 1;
 }

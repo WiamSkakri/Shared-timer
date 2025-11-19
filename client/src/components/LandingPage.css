@@ -1,0 +1,99 @@
+.landing-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  position: relative;
+}
+
+.landing-content {
+  text-align: center;
+  padding: 2rem;
+}
+
+.landing-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.5px;
+}
+
+.landing-brand {
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  letter-spacing: -1px;
+  line-height: 1.2;
+}
+
+.shared-text {
+  background: linear-gradient(90deg, hsl(200, 100%, 50%), hsl(180, 100%, 55%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.timer-text {
+  background: linear-gradient(90deg, hsl(60, 100%, 55%), hsl(45, 100%, 60%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-line-landing {
+  height: 4px;
+  width: 120px;
+  margin: 0 auto 2rem;
+  background: linear-gradient(90deg, hsl(200, 100%, 50%), hsl(45, 100%, 60%));
+  border-radius: 2px;
+}
+
+.landing-tagline {
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  color: #666;
+  font-weight: 400;
+  margin-bottom: 4rem;
+  letter-spacing: 0.5px;
+}
+
+.scroll-arrow {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  animation: bounce 2s infinite;
+  padding: 0.5rem;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll-arrow:hover {
+  color: hsl(200, 100%, 50%);
+  transform: translateY(4px);
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-content {
+    padding: 1.5rem;
+  }
+
+  .landing-tagline {
+    margin-bottom: 3rem;
+  }
+}

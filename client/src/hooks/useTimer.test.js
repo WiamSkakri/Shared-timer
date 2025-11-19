@@ -1,0 +1,162 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useTimer } from './useTimer';
+
+describe('useTimer', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should initialize with default values', () => {
+    const { result } = renderHook(() => useTimer());
+
+    expect(result.current.timerId).toBeNull();
+    expect(result.current.time).toBe(0);
+    expect(result.current.isRunning).toBe(false);
+    expect(result.current.isJoined).toBe(false);
+  });
+
+  it('should set timer ID', () => {
+    const { result } = renderHook(() => useTimer());
+
+    act(() => {
+      result.current.setTimerId('test-id-123');
+    });
+
+    expect(result.current.timerId).toBe('test-id-123');
+  });
+
+  it('should set time', () => {
+    const { result } = renderHook(() => useTimer());
+
+    act(() => {
+      result.current.setTime(100);
+    });
+
+    expect(result.current.time).toBe(100);
+  });
+
+  it('should set running status', () => {
+    const { result } = renderHook(() => useTimer());
+
+    act(() => {
+      result.current.setIsRunning(true);
+    });
+
+    expect(result.current.isRunning).toBe(true);
+  });
+
+  it('should set joined status', () => {
+    const { result } = renderHook(() => useTimer());
+
+    act(() => {
+      result.current.setIsJoined(true);
+    });
+
+    expect(result.current.isJoined).toBe(true);
+  });
+
+  it('should increment time when timer is running', () => {
+    const { result } = renderHook(() => useTimer());
+
+    act(() => {
+      result.current.setIsRunning(true);
+    });
+
+    expect(result.current.time).toBe(0);
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(result.current.time).toBe(1);
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(result.current.time).toBe(4);
+  });
+
+  it('should not increment time when timer is not running', () => {
+    const { result } = renderHook(() => useTimer());
+
+    expect(result.current.time).toBe(0);
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(result.current.time).toBe(0);
+  });
+
+  it('should stop incrementing when timer is stopped', () => {
+    const { result } = renderHook(() => useTimer());
+
+    act(() => {
+      result.current.setIsRunning(true);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(result.current.time).toBe(3);
+
+    act(() => {
+      result.current.setIsRunning(false);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(result.current.time).toBe(3);
+  });
+
+  it('should reset all state with resetState function', () => {
+    const { result } = renderHook(() => useTimer());
+
+    act(() => {
+      result.current.setTimerId('test-id');
+      result.current.setTime(100);
+      result.current.setIsRunning(true);
+      result.current.setIsJoined(true);
+    });
+
+    expect(result.current.timerId).toBe('test-id');
+    expect(result.current.time).toBe(100);
+    expect(result.current.isRunning).toBe(true);
+    expect(result.current.isJoined).toBe(true);
+
+    act(() => {
+      result.current.resetState();
+    });
+
+    expect(result.current.timerId).toBeNull();
+    expect(result.current.time).toBe(0);
+    expect(result.current.isRunning).toBe(false);
+    expect(result.current.isJoined).toBe(false);
+  });
+
+  it('should continue timer from a set time value', () => {
+    const { result } = renderHook(() => useTimer());
+
+    act(() => {
+      result.current.setTime(50);
+      result.current.setIsRunning(true);
+    });
+
+    expect(result.current.time).toBe(50);
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(result.current.time).toBe(52);
+  });
+});

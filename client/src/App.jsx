@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useSocket, useSocketActions } from './hooks/useSocket';
 import { useTimer } from './hooks/useTimer';
 import { useNotification } from './hooks/useNotification';
 import { createTimer } from './services/timerService';
+import LandingPage from './components/LandingPage';
 import TimerDisplay from './components/TimerDisplay';
 import TimerJoin from './components/TimerJoin';
 import TimerControls from './components/TimerControls';
@@ -14,6 +15,7 @@ function App() {
   // Custom hooks for state management
   const { timerId, setTimerId, time, setTime, isRunning, setIsRunning, setIsJoined, resetState } = useTimer();
   const { message, showMessage } = useNotification(3000);
+  const timerSectionRef = useRef(null);
 
   // Socket event callbacks
   const socketCallbacks = useMemo(() => ({
@@ -98,34 +100,38 @@ function App() {
     resetTimer();
   };
 
+  // Handler for scrolling to timer section
+  const handleScrollToTimer = () => {
+    timerSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="app">
-      <div className="container">
-        <h1 className="title">
-          Shared Timer
-          <div className="gradient-line"></div>
-        </h1>
+      <LandingPage onScrollToTimer={handleScrollToTimer} />
 
-        <TimerDisplay time={time} />
+      <div className="timer-section" ref={timerSectionRef}>
+        <div className="container">
+          <TimerDisplay time={time} />
 
-        <Notification text={message.text} type={message.type} />
+          <Notification text={message.text} type={message.type} />
 
-        <TimerJoin
-          onCreateTimer={handleCreateTimer}
-          onJoinTimer={handleJoinTimer}
-        />
+          <TimerJoin
+            onCreateTimer={handleCreateTimer}
+            onJoinTimer={handleJoinTimer}
+          />
 
-        {timerId && (
-          <>
-            <TimerControls
-              isRunning={isRunning}
-              onStart={handleStart}
-              onStop={handleStop}
-              onReset={handleReset}
-            />
-            <TimerIdDisplay timerId={timerId} />
-          </>
-        )}
+          {timerId && (
+            <>
+              <TimerControls
+                isRunning={isRunning}
+                onStart={handleStart}
+                onStop={handleStop}
+                onReset={handleReset}
+              />
+              <TimerIdDisplay timerId={timerId} />
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
