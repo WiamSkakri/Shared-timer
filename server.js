@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
 const app = express();
@@ -9,6 +8,47 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 let timers = {};
+
+// Word lists for generating funny, memorable timer IDs
+const adjectives = [
+  'happy', 'silly', 'crazy', 'lazy', 'fuzzy', 'dizzy', 'bouncy', 'sleepy',
+  'grumpy', 'snazzy', 'wacky', 'quirky', 'jolly', 'cheeky', 'funky', 'goofy',
+  'loopy', 'zippy', 'perky', 'sassy', 'clumsy', 'sparkly', 'wobbly', 'giggly',
+  'sneaky', 'dreamy', 'fluffy', 'bumpy', 'jumpy', 'lumpy', 'spicy', 'crispy',
+  'rainy', 'sunny', 'cloudy', 'breezy', 'foggy', 'snowy', 'windy', 'stormy',
+  'mighty', 'tiny', 'giant', 'swift', 'brave', 'bold', 'wild', 'calm'
+];
+
+const nouns = [
+  'cloud', 'kitchen', 'pancake', 'waffle', 'muffin', 'cookie', 'pickle', 'noodle',
+  'potato', 'banana', 'taco', 'burrito', 'pizza', 'donut', 'cupcake', 'sandwich',
+  'penguin', 'koala', 'llama', 'panda', 'hamster', 'bunny', 'turtle', 'dolphin',
+  'octopus', 'narwhal', 'unicorn', 'dragon', 'phoenix', 'wizard', 'ninja', 'pirate',
+  'rocket', 'comet', 'planet', 'galaxy', 'meteor', 'rainbow', 'thunder', 'lightning',
+  'mountain', 'river', 'ocean', 'forest', 'desert', 'valley', 'volcano', 'island',
+  'robot', 'spaceship', 'castle', 'treasure', 'crystal', 'diamond', 'star', 'moon'
+];
+
+/**
+ * Generates a random readable timer ID
+ * Format: adjective-noun-number (e.g., happy-cloud-42)
+ * @returns {string} A unique, memorable timer ID
+ */
+function generateReadableId() {
+  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const number = Math.floor(Math.random() * 1000); // 0-999
+
+  let id = `${adjective}-${noun}-${number}`;
+
+  // Ensure uniqueness - if ID exists, try again
+  while (timers[id]) {
+    const newNumber = Math.floor(Math.random() * 1000);
+    id = `${adjective}-${noun}-${newNumber}`;
+  }
+
+  return id;
+}
 
 // Timer cleanup configuration
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes of inactivity
@@ -21,9 +61,10 @@ if (process.env.NODE_ENV === 'production') {
 
 // Endpoint to create a new timer
 app.get('/create-timer', (req, res) => {
-  const timerId = uuidv4(); // Generate unique timer ID
+  const timerId = generateReadableId(); // Generate unique, readable timer ID
   timers[timerId] = {
-    time: 0,
+    startTime: null,      // Timestamp when timer started (null if not running)
+    pausedTime: 0,        // Accumulated time in seconds when paused
     running: false,
     lastActivity: Date.now(),
     connectedUsers: 0,
@@ -33,17 +74,26 @@ app.get('/create-timer', (req, res) => {
 
 // Optional: Server stats endpoint for monitoring
 app.get('/api/stats', (req, res) => {
+  const now = Date.now();
   const stats = {
     totalTimers: Object.keys(timers).length,
     activeTimers: Object.values(timers).filter(t => t.running).length,
     totalConnectedUsers: Object.values(timers).reduce((sum, t) => sum + t.connectedUsers, 0),
-    timers: Object.entries(timers).map(([id, timer]) => ({
-      id: id.substring(0, 8) + '...',
-      connectedUsers: timer.connectedUsers,
-      running: timer.running,
-      time: timer.time,
-      inactiveMins: Math.round((Date.now() - timer.lastActivity) / 60000),
-    })),
+    timers: Object.entries(timers).map(([id, timer]) => {
+      // Calculate current time for running timers
+      let currentTime = timer.pausedTime;
+      if (timer.running && timer.startTime) {
+        const elapsed = Math.floor((now - timer.startTime) / 1000);
+        currentTime = timer.pausedTime + elapsed;
+      }
+      return {
+        id: id.substring(0, 8) + '...',
+        connectedUsers: timer.connectedUsers,
+        running: timer.running,
+        time: currentTime,
+        inactiveMins: Math.round((now - timer.lastActivity) / 60000),
+      };
+    }),
   };
   res.json(stats);
 });

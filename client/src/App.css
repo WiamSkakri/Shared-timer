@@ -16,6 +16,10 @@
   width: 100%;
   max-width: 600px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Responsive design */
