@@ -29,7 +29,7 @@
   <script>
     const socket = io();
     let timerId = null;
-    let time = 0; 
+    let time = 0;
     let interval = null;
 
     // Function to format time as "MM:SS"
@@ -44,31 +44,62 @@
       document.getElementById('timerDisplay').textContent = formatTime(time);
     };
 
+    // Function to show error messages
+    const showError = (message) => {
+      alert(`Error: ${message}`);
+    };
+
+    // Function to show success messages
+    const showSuccess = (message) => {
+      alert(message);
+    };
+
     document.getElementById('createTimer').onclick = async () => {
-      const response = await fetch('/create-timer');
-      const data = await response.json();
-      timerId = data.timerId;
-      alert(`Timer ID: ${timerId} (Share this ID to join)`);
-      joinTimerRoom(timerId);
+      try {
+        const response = await fetch('/create-timer');
+        const data = await response.json();
+        timerId = data.timerId;
+        showSuccess(`Timer created! Share this ID: ${timerId}`);
+        joinTimerRoom(timerId);
+      } catch (error) {
+        showError('Failed to create timer. Please try again.');
+      }
     };
 
     document.getElementById('joinTimer').onclick = () => {
-      const inputTimerId = document.getElementById('timerId').value;
-      if (inputTimerId) {
-        window.history.pushState({}, '', `?timerId=${inputTimerId}`);
-        joinTimerRoom(inputTimerId);
+      const inputTimerId = document.getElementById('timerId').value.trim();
+
+      if (!inputTimerId) {
+        showError('Please enter a timer ID');
+        return;
       }
+
+      window.history.pushState({}, '', `?timerId=${inputTimerId}`);
+      joinTimerRoom(inputTimerId);
     };
 
     const joinTimerRoom = (id) => {
       socket.emit('joinTimer', id);
-      document.getElementById('actions').style.display = 'block';
-      console.log(`Joined timer room ${id}`);
+      console.log(`Attempting to join timer room ${id}`);
     };
 
-    document.getElementById('start').onclick = () => socket.emit('startTimer');
-    document.getElementById('stop').onclick = () => socket.emit('stopTimer');
+    document.getElementById('start').onclick = () => {
+      if (!timerId) {
+        showError('Please create or join a timer first');
+        return;
+      }
+      socket.emit('startTimer');
+    };
 
+    document.getElementById('stop').onclick = () => {
+      if (!timerId) {
+        showError('Please create or join a timer first');
+        return;
+      }
+      socket.emit('stopTimer');
+    };
+
+    // Socket event handlers
     socket.on('timerUpdate', (timer) => {
       time = timer.time;
       updateDisplay();
@@ -84,6 +115,22 @@
 
     socket.on('timerStopped', () => {
       clearInterval(interval);
+    });
+
+    socket.on('joinSuccess', (data) => {
+      document.getElementById('actions').style.display = 'block';
+      timerId = new URLSearchParams(window.location.search).get('timerId') || timerId;
+      showSuccess(data.message);
+    });
+
+    socket.on('error', (data) => {
+      showError(data.message);
+      document.getElementById('actions').style.display = 'none';
+      timerId = null;
+    });
+
+    socket.on('connect_error', () => {
+      showError('Failed to connect to server. Please check your connection.');
     });
   </script>
 </body>

@@ -1,17 +1,28 @@
 {
   "name": "shared-timer",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
+    "server": "node server.js",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "cd client && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": ["timer", "shared-timer", "realtime", "websocket", "socket.io", "react"],
+  "author": "Wiam Skakri",
+  "license": "MIT",
+  "description": "A real-time collaborative timer application built with React, Node.js, and Socket.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WiamSkakri/Shared-timer.git"
+  },
   "dependencies": {
     "express": "^4.21.1",
     "socket.io": "^4.8.1",
     "uuid": "^11.0.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }
